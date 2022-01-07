@@ -1,0 +1,109 @@
+#!/usr/bin/perl
+
+# deps
+  use strict;
+  use warnings;
+
+# ---   *   ---   *   ---
+# settings
+
+  my $base_font="/usr/share/kbd/consolefonts/cp850-8x8.psfu.gz";
+  my $fonts_fold=glob "~/fonts";
+
+
+# ---   *   ---   *   ---
+# args
+
+  my $fin=glob $ARGV[0]; if(!$fin) {
+    print "Provide a file name\n";
+    exit;
+
+  };
+
+# ---   *   ---   *   ---
+# main
+
+my @res=(
+  8   , 100,
+  10  , 125,
+  12  , 150,
+  14  , 175,
+  
+  16  , 200,
+  18  , 225,
+  20  , 250,
+  22  , 275,
+  
+  24  , 300,
+  26  , 325,
+  28  , 350,
+  30  , 375,
+  
+  32  , 400,
+
+# ---   *   ---   *   ---
+# iterate resolutions
+
+); {
+
+  # string paste so the calls look cleaner
+  my $odir="$fonts_fold"."/$fin";
+  my $src_bmp="$odir"."/$fin".'8_src.bmp';
+  my $src_table="$odir"."/$fin"."_table";
+
+  while(@res) {
+
+    # get next value pair
+    my $pxsz=shift @res;
+    my $pxpc=shift @res;
+
+# ---   *   ---   *   ---
+# generate base resources on init run
+
+    if($pxsz==8) {
+
+      # ensure the out directory exists
+      if(!(`dir "$odir"  2> /dev/null`)) {
+        mkdir $odir;
+
+      };`rm "$odir"/*`;
+
+      # copy files to dir and decompress      
+      system 'cp', ("$base_font","$odir"."/$fin"."_base.gz");
+      system 'gunzip',("$odir"."/$fin"."_base.gz");
+
+      # extract psf data
+      system './rw-psf/readpsf',("$odir"."/$fin".'_base', 'bmp');
+      system './stunift',("$odir"."/$fin"."_base",$src_table);
+
+      # replace extracted glyphs with my own
+      `./bmp.pl "$odir""/$fin"_base.8x8.bmp $src_bmp`;
+
+    };
+
+# ---   *   ---   *   ---
+# generate variations on base
+
+    # more string paste
+    my $dst_bmp="$odir"."/$fin"."$pxsz".'.bmp';
+    my $dst_psf="$odir"."/$fin"."$pxsz".'.psf';
+    my $dst_psfu="$odir"."/$fin"."$pxsz".'.psfu';
+
+    $pxpc=$pxsz*16;
+    $pxpc="$pxpc".'x'."$pxpc";
+
+    print "\nGenerating $pxsz"."x$pxsz"."($pxpc)"."...";
+
+    # resize and write font
+    system 'magick',('convert','-interpolate','Integer','-filter','point','-compress','None','-depth','24','-resize',$pxpc,'BMP3:'.$src_bmp,'BMP3:'.$dst_bmp);    
+    system './rw-psf/writepsf',('-bw'.$pxsz,'-bh'.$pxsz,$dst_bmp,$dst_psf);
+
+    # add unicode table
+    system 'psfaddtable',($dst_psf,$src_table,$dst_psfu);
+        
+  };
+
+};print "\nDone.\n";
+
+# ---   *   ---   *   ---
+1; # ret;
