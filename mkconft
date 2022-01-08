@@ -4,6 +4,10 @@
   use strict;
   use warnings;
 
+  use File::Basename;
+  use lib glob '.';
+  use jojft;
+
 # ---   *   ---   *   ---
 # settings
 
@@ -14,11 +18,65 @@
 # ---   *   ---   *   ---
 # args
 
-  my $fin=glob $ARGV[0]; if(!$fin) {
-    print "Provide a file name\n";
-    exit;
+#  my $fin=glob $ARGV[0]; if(!$fin) {
+#    print "Provide a file name\n";
+#    exit;
+#
+#  };
+
+# ---   *   ---   *   ---
+# sanity check
+
+{
+  my $dirname=dirname(__FILE__);
+  chdir $dirname;
+  
+  if(!(`find $dirname/rw-psf 2> /dev/null`)) {
+    print "rw-psf not found... ";
+    if(!(`which git 2> /dev/null`)) {
+      print "and you don't have git, wonderfull\n";
+      print "Install git, then I can pull deps for you\n";
+      exit;
+
+    };print "pulling from git\n";
+    `git clone https://github.com/talamus/rw-psf.git`;
 
   };
+
+};
+
+  my $fin=glob $ARGV[0]; if(!$fin) {
+
+    print "Usage: mkconft <action> <fontname>\n\n";
+    print "  Available actions are:\n\n";
+
+    my ($act,$desc);
+
+    format HELPME=
+    @<<<<<<<<<<<<<<<<   @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    $act,               $desc
+.
+
+
+my @help=(
+'-g,--generate'     ,'creates font and rezised versions 444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444',
+'-up,--unpack'      ,'unpacks provided font',
+
+
+);
+    select(STDOUT);
+    $~="HELPME";
+    
+    while(@help) {
+      $act=shift @help;
+      $desc=shift @help;
+
+      write;
+
+
+    };exit;
+
+  };exit;
 
 # ---   *   ---   *   ---
 # main
@@ -51,38 +109,36 @@ my @res=(
   my $src_bmp="$odir"."/$fin".'8_src.bmp';
   my $src_table="$odir"."/$fin"."_table";
 
+
+
+# ---   *   ---   *   ---
+# generate base resources
+
+  # ensure the out directory exists
+  if(!(`dir "$odir"  2> /dev/null`)) {
+    mkdir $odir;
+
+  };`rm "$odir"/*`;
+
+  # copy files to dir and decompress      
+  system 'cp', ("$base_font","$odir"."/$fin"."_base.gz");
+  system 'gunzip',("$odir"."/$fin"."_base.gz");
+
+  # extract psf data
+  system './rw-psf/readpsf',("$odir"."/$fin".'_base', 'bmp');
+  system './stunift',("$odir"."/$fin"."_base",$src_table);
+
+  # replace extracted glyphs with my own
+  `./bmp.pl "$odir""/$fin"_base.8x8.bmp $src_bmp`;
+
+# ---   *   ---   *   ---
+# generate variations on base
+
   while(@res) {
 
     # get next value pair
     my $pxsz=shift @res;
     my $pxpc=shift @res;
-
-# ---   *   ---   *   ---
-# generate base resources on init run
-
-    if($pxsz==8) {
-
-      # ensure the out directory exists
-      if(!(`dir "$odir"  2> /dev/null`)) {
-        mkdir $odir;
-
-      };`rm "$odir"/*`;
-
-      # copy files to dir and decompress      
-      system 'cp', ("$base_font","$odir"."/$fin"."_base.gz");
-      system 'gunzip',("$odir"."/$fin"."_base.gz");
-
-      # extract psf data
-      system './rw-psf/readpsf',("$odir"."/$fin".'_base', 'bmp');
-      system './stunift',("$odir"."/$fin"."_base",$src_table);
-
-      # replace extracted glyphs with my own
-      `./bmp.pl "$odir""/$fin"_base.8x8.bmp $src_bmp`;
-
-    };
-
-# ---   *   ---   *   ---
-# generate variations on base
 
     # more string paste
     my $dst_bmp="$odir"."/$fin"."$pxsz".'.bmp';

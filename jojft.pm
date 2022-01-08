@@ -19,7 +19,7 @@
   use strict;
   use warnings;
 
-package JOJ;
+package JOJFT;
 
 # constants
   use constant {
@@ -188,16 +188,14 @@ sub bw {
 # literal translation, write to array
 sub abw_row {
 
-  my @ar=@{$_[0]};
-  my $i=$_[1];
-
-  my $b=$_[2];
-  my $off=$_[3];
+  my @ar=();
+  my $b=shift;
+  my $off=shift;
   
   my $x=7;do {
     push @ar,($b & (1<<((7-$x)+$off)) ) ? 1 : 0;
 
-  } while($x--);return \@ar;
+  } while($x--);return @ar;
 
 };
 
@@ -248,19 +246,38 @@ sub pr_ascii {
 
 };
 
-sub pr_bmp {
+# ---   *   ---   *   ---
 
-  open_jojft( glob(shift) );
+# single-arg: reference to glyph array
+# return intermediate joj to raster representation
+sub ir_ras {
 
+  my $ref=$_[0];
   my @im=();
   
   my $r=0;
   my $x=0;
-  
-  for(my $y=0;$y<16;$y++) {
-    @im=@{ abw(\@im,$x,$y) };$x+=16;
 
-  };return \@im;
+  # iter through glyphs  
+  for(my $y=0;$y<GL_ROWS;$y++) {
+    for(my $x=0;$x<GL_GPR;$x++) {
+
+      # write glyph to flat array    
+      my @ar=read_glyph($ref,$x+($y*GL_GPR),1);
+      my $off_y=((GL_ROWS-1)*GL_Y)-($y*GL_Y);
+
+      # place array values at corresponding pixels
+      for(my $z=0;$z<8;$z++) {
+        my $off_x=($x*GL_X)+($off_y*SZ_X);
+        @im[$off_x..$off_x+GL_X-1]=@ar[($z*8)..($z*8)+GL_X-1];
+        $off_y++;
+
+      };
+
+    };
+  };
+
+  return \@im;
 
 };
 
@@ -347,8 +364,6 @@ sub read_bmp {
 
 # dst=outfile path
 # src=pixel array
-# sz_x=image width
-# sz_y=image height
 
 # write pix array to bmp
 sub write_bmp {
@@ -356,35 +371,32 @@ sub write_bmp {
   my $dst=shift;
   my @src=@{ $_[0] };shift;
   
-  my $sz_x=shift;
-  my $sz_y=shift;
-
-  my $bpr=calc_bpr $sz_x;
+  my $bpr=calc_bpr SZ_X;
 
   # open file and dump header
   open BMP, '>:raw',$dst;
   print BMP pack 'a2 V n2 V4 v2 V6', (
-    'BM',54+($sz_y*$bpr),
+    'BM',54+(SZ_Y*$bpr),
 
     # you know it's a pleb format when
     # it uses this cringe siggy
     0xcafe,0xbabe,
     54,40,
     
-    $sz_x,$sz_y,
+    SZ_X,SZ_Y,
     
     1,24,0,
     
-    $sz_y*$bpr,0,0,0,0,
+    SZ_Y*$bpr,0,0,0,0,
 
 # ---   *   ---   *   ---
 
-  );my $pad=$bpr-($sz_x*3);
+  );my $pad=$bpr-(SZ_X*3);
 
   # write data and close
-  for(my $y=$sz_y;$y--;) {
+  for(my $y=SZ_Y;$y--;) {
     my $row='';
-    for(my $x=0;$x<$sz_x;++$x) {
+    for(my $x=0;$x<SZ_X;++$x) {
       $row .= $src[$x][$y];
       
     };$row .= pack "C$pad",0;
@@ -395,40 +407,34 @@ sub write_bmp {
 
 # ---   *   ---   *   ---
 
-# first arg: path to jojfile
-# sz_x=image width
-# sz_y=image height
-
+# single arg: glyph array reference
 # copy joj font data into a checkerboard
 sub checkers {
 
   # fetch joj data
-  my @src=@{ pr_bmp(glob(shift)) };
+  my @src=@{ ir_ras(shift) };
   my @im=();my $dim=0;my $literal_edge_case=0;
 
   my $vy=0;
   my $vx=0;
 
-  my $sz_x=shift;
-  my $sz_y=shift;
-
 # ---   *   ---   *   ---
 
   # read
-  for(my $y=$sz_y;$y--;) {
-    for(my $x=0;$x<$sz_x;++$x) {
+  for(my $y=SZ_Y;$y--;) {
+    for(my $x=0;$x<SZ_X;++$x) {
 
       # pix either full black of white
       my $v=(shift @src)*255;
 
       # ascii checkers mindfuck
       $vy=(!(($y/8)&1));
-      $vy|=(($x%($sz_x-1))!=0);
+      $vy|=(($x%(SZ_X-1))!=0);
       $vx=(($x%8)!=0);
 
       # ^idem      
       if(($vx) ^ ($vy)){$dim=!$dim};
-      $literal_edge_case=!(($x==($sz_x-1)) && (!$vy));
+      $literal_edge_case=!(($x==(SZ_X-1)) && (!$vy));
 
       # write checkered value to array
       $v=( ($v == 0) && ((!$dim)*$literal_edge_case))
@@ -450,16 +456,13 @@ sub checkers {
 # joj font to bitmap converter
 sub jtob {
 
-  # hardcoded, 256 8x8 glyphs
-  my $sz_x=128;
-  my $sz_y=128;
-
   # get joj data
-  my @im=@{ checkers(shift,$sz_x,$sz_y) };
+  my $ref=open_jojft(shift);
+  my @im=@{ checkers($ref) };
 
   # get name of dst and write
   my $fout=shift;
-  write_bmp $fout,\@im,$sz_x,$sz_y;
+  write_bmp $fout,\@im;
 
 };
 
@@ -504,10 +507,26 @@ sub make_glyph {
 
 # ---   *   ---   *   ---
 
-sub fuck {
+sub ar_row {
+
+  my $v=shift;
+  my $fun=\&abw_row;
+  
+  return (
+    $fun->($v,  0),
+    $fun->($v,  8),
+    $fun->($v, 16),
+    $fun->($v, 24)
+    
+  );
+
+};
+
+sub pr_row {
 
   my $v=shift;
   my $fun=($_[0]) ? \&rbw_row : \&bw_row;
+  
   return
     ( $fun->($v,  0) )."\n".
     ( $fun->($v,  8) )."\n".
@@ -516,14 +535,17 @@ sub fuck {
 
 };
 
-# fout=path to font
+# ---   *   ---   *   ---
+
+# ref=reference to a glyphs array
 # N=idex of glyph to fetch
+# as_arr=return numerical representation
 
 # fetch N glyph from table
 sub read_glyph {
 
-  my @glyphs=@{ open_jojft(shift) };
-  my $N=shift;
+  my @glyphs=@{ $_[0] };shift;
+  my $N=shift;my $as_arr=shift;
 
   my $x=0;
   my $y=15;
@@ -535,11 +557,18 @@ sub read_glyph {
     };$N--;
   };
 
-  my $s="";
-  my $bot=$glyphs[$x][$y][1];$s.=fuck($bot,1);
-  my $top=$glyphs[$x][$y][0];$s.=fuck($top,1);
+  my $top=$glyphs[$x][$y][0];
+  my $bot=$glyphs[$x][$y][1];
 
-  print $s;
+  if($as_arr) {
+    return ( ar_row($top),ar_row($bot) );
+
+  };
+
+  my $s="";
+  $s.=pr_row($bot,1);
+  $s.=pr_row($top,1);
+  return $s;
 
 };
 
@@ -578,12 +607,6 @@ sub btoj {
   system 'gzip',($fout);
   
 };
-
-# ---   *   ---   *   ---
-
-# testing
-btoj('./LyTest/LyTest8_src.bmp','./lycon');
-read_glyph('./lycon',65);
 
 # ---   *   ---   *   ---
 1; # ret
