@@ -5,7 +5,11 @@
   use warnings;
 
   use File::Basename;
-  use lib glob '.';
+
+  use lib glob $ENV{'ARPATH'}.'/lib/';
+
+  use cash;
+  use avt;
   use jojft;
 
 # ---   *   ---   *   ---
@@ -14,69 +18,94 @@
   my $base_font="/usr/share/kbd/consolefonts/cp850-8x8.psfu.gz";
   my $fonts_fold=glob "~/fonts";
 
+# ---   *   ---   *   ---
+# info
+
+  use constant {
+    VERSION   =>  "0.1b",
+
+  };
 
 # ---   *   ---   *   ---
-# args
+# global storage
 
-#  my $fin=glob $ARGV[0]; if(!$fin) {
-#    print "Provide a file name\n";
-#    exit;
-#
-#  };
+  my %CACHE=(
+    -OPTS   => 0,
+
+  );
 
 # ---   *   ---   *   ---
 # sanity check
 
-{
-  my $dirname=dirname(__FILE__);
-  chdir $dirname;
-  
-  if(!(`find $dirname/rw-psf 2> /dev/null`)) {
-    print "rw-psf not found... ";
-    if(!(`which git 2> /dev/null`)) {
-      print "and you don't have git, wonderfull\n";
-      print "Install git, then I can pull deps for you\n";
-      exit;
+# disabled for testing something else, I already have the deps anyway
 
-    };print "pulling from git\n";
-    `git clone https://github.com/talamus/rw-psf.git`;
+#{ my $dirname=dirname(__FILE__);
+#  chdir $dirname;
+#  
+#  if(!(`find $dirname/rw-psf 2> /dev/null`)) {
+#    print "rw-psf not found... ";
+#    if(!(`which git 2> /dev/null`)) {
+#      print "and you don't have git, wonderfull\n";
+#      print "Install git, then I can pull deps for you\n";
+#      exit;
+#
+#    };print "pulling from git\n";
+#    `git clone https://github.com/talamus/rw-psf.git`;
+#
+#  };
+#};
 
-  };
+# print helpme
+sub help {
 
+  my @header=(
+    "ft8 <action> <fontname>",
+    
+    "ft8 handles 8x8 bitmap fonts in joj format; it can pack an existing".
+    " bmp into this one-bit per pixel encoding as well as generate".
+    " multiple resized versions of the original font".
+
+    '$:parg;>'.
+
+    "Note that ft8 can only use 128x128 images as *source*, meaning only those".
+    " can be used to generate larger fonts. These sources must respect the".
+    " standard 16 glyphs per row, for a total of 256 glyphs"
+
+  );my @OPTS=(@header,@{ $CACHE{-OPTS} });  
+  print avt::ex 'help',\@OPTS,' ';exit;
+
+# print version info
+};sub version {
+  print avt::version(
+    'ft8',VERSION,
+    'IBN-3DILA'
+    
+  );exit;
 };
 
-  my $fin=glob $ARGV[0]; if(!$fin) {
+# ---   *   ---   *   ---
 
-    print "Usage: mkconft <action> <fontname>\n\n";
-    print "  Available actions are:\n\n";
+# options
+my @OPTS=(
+  '-h,--help'         ,'Display this message',
+  '-v,--version'      ,'Print version info and exit',
+  '-g,--generate'     ,'Creates font and resized versions',
+  '-up,--unpack'      ,'Unpacks provided font',
 
-    my ($act,$desc);
+);my %OPTS;{
+  my @op_calls=(\&help,\&version,undef,undef);
+  %OPTS=%{ cash::mcalltab(\@OPTS,\@op_calls) };
 
-    format HELPME=
-    @<<<<<<<<<<<<<<<<   @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-    $act,               $desc
-.
+  $CACHE{-OPTS}=\@OPTS;
 
+};if(!@ARGV) {help;};
+while(@ARGV && grep m/${ ARGV[0] }/,keys %OPTS) {
+  my $opt=shift;
+  $OPTS{$opt}->();
 
-my @help=(
-'-g,--generate'     ,'creates font and rezised versions 444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444',
-'-up,--unpack'      ,'unpacks provided font',
+};exit;
 
-
-);
-    select(STDOUT);
-    $~="HELPME";
-    
-    while(@help) {
-      $act=shift @help;
-      $desc=shift @help;
-
-      write;
-
-
-    };exit;
-
-  };exit;
+# 
 
 # ---   *   ---   *   ---
 # main
@@ -103,6 +132,8 @@ my @res=(
 # iterate resolutions
 
 ); {
+
+  my $fin="FUCK";
 
   # string paste so the calls look cleaner
   my $odir="$fonts_fold"."/$fin";
