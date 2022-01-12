@@ -15,7 +15,7 @@ ft8 8,16,24 ~/AR/ft8/lycon ~/AR/ft8/fonts
 
 Outs 8x8, 16x16 and 24x24 versions of `lycon` to the `ARPATH` font directory.
 
-For more information on how to work with `AR` packages, refer to the [url="https://github.com/Liebranca/avtomat"]avtomat[/url] repository, where the example script `AR-install` demonstrates it in detail.
+For more information on how to work with `AR` packages, refer to the [avtomat](https://github.com/Liebranca/avtomat) repository, where the example script `AR-install` demonstrates it in detail.
 
 # TODO
 
