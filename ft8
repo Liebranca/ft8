@@ -4,19 +4,11 @@
   use strict;
   use warnings;
 
-  use File::Basename;
-
-  use lib glob $ENV{'ARPATH'}.'/lib/';
+  use lib $ENV{'ARPATH'}.'/lib/';
 
   use cash;
   use avt;
   use jojft;
-
-# ---   *   ---   *   ---
-# settings
-
-  my $base_font="/usr/share/kbd/consolefonts/cp850-8x8.psfu.gz";
-  my $fonts_fold=glob "~/fonts";
 
 # ---   *   ---   *   ---
 # info
@@ -33,27 +25,6 @@
     -OPTS   => 0,
 
   );
-
-# ---   *   ---   *   ---
-# sanity check
-
-# disabled for testing something else, I already have the deps anyway
-
-#{ my $dirname=dirname(__FILE__);
-#  chdir $dirname;
-#  
-#  if(!(`find $dirname/rw-psf 2> /dev/null`)) {
-#    print "rw-psf not found... ";
-#    if(!(`which git 2> /dev/null`)) {
-#      print "and you don't have git, wonderfull\n";
-#      print "Install git, then I can pull deps for you\n";
-#      exit;
-#
-#    };print "pulling from git\n";
-#    `git clone https://github.com/talamus/rw-psf.git`;
-#
-#  };
-#};
 
 # print helpme
 sub help {
@@ -85,112 +56,95 @@ sub help {
 
 # ---   *   ---   *   ---
 
+# args=sizes,path to joj font (no ext), outdir
+# build fonts from joj
+sub generate {
+
+  my @res=split ',',shift @ARGV;
+
+  my $src=shift @ARGV;
+  my $odir=shift @ARGV;
+
+  # get basename from path
+  my $name;{
+    my @tmp=split '/',$src;
+    $name=$tmp[$#tmp];
+
+  };
+
+  my $src_table="$odir/$name".'_table';
+  if(!(-e $odir)) {`mkdir -p $odir`;};
+
+# ---   *   ---   *   ---
+
+  # generate base bmp from joj
+  my $src_bmp=$src.'_src.bmp';
+  jojft::jtob($src,$src_bmp);
+
+  # extract basis unicode table
+  jojft::stunift(
+    '/usr/share/kbd/consolefonts/cp865-8x8.psfu.gz',
+    $src_table
+
+  );
+
+# ---   *   ---   *   ---
+# iterate resolutions
+
+  while(@res) {
+
+    my $pxsz=shift @res;
+
+    # more string paste
+    my $dst_bmp="$odir/$name$pxsz.bmp";
+    my $dst_psf="$odir/$name$pxsz.psf";
+    my $dst_psfu="$odir/$name$pxsz.psfu";
+
+    # calculate output size
+    my $pxpc=$pxsz*16;
+    $pxpc="$pxpc".'x'."$pxpc";
+
+# ---   *   ---   *   ---
+
+    # resize and write font
+    system 'magick',('convert','-interpolate','Integer',
+      '-filter','point','-compress','None','-depth','24',
+      '-resize', $pxpc,'BMP3:'.$src_bmp,'BMP3:'.$dst_bmp
+
+    );avt::ex 'writepsf',["-bw$pxsz","-bh$pxsz",$dst_bmp,$dst_psf],'';
+
+    # add unicode table
+    system 'psfaddtable',($dst_psf,$src_table,$dst_psfu);
+
+    # cleanup
+    `rm $dst_bmp`;
+  };`rm $src_bmp`;
+  
+};
+
+# ---   *   ---   *   ---
+
 # options
 my @OPTS=(
   '-h,--help'         ,'Display this message',
   '-v,--version'      ,'Print version info and exit',
   '-g,--generate'     ,'Creates font and resized versions',
-  '-up,--unpack'      ,'Unpacks provided font',
+  '-up,--unpack'      ,'Unpacks provided joj font into a bmp image',
 
 );my %OPTS;{
-  my @op_calls=(\&help,\&version,undef,undef);
+  my @op_calls=(\&help,\&version,\&generate,undef);
   %OPTS=%{ cash::mcalltab(\@OPTS,\@op_calls) };
 
   $CACHE{-OPTS}=\@OPTS;
 
 };if(!@ARGV) {help;};
+
+# iter passed args
 while(@ARGV && grep m/${ ARGV[0] }/,keys %OPTS) {
   my $opt=shift;
   $OPTS{$opt}->();
 
 };exit;
-
-# 
-
-# ---   *   ---   *   ---
-# main
-
-my @res=(
-  8   , 100,
-  10  , 125,
-  12  , 150,
-  14  , 175,
-  
-  16  , 200,
-  18  , 225,
-  20  , 250,
-  22  , 275,
-  
-  24  , 300,
-  26  , 325,
-  28  , 350,
-  30  , 375,
-  
-  32  , 400,
-
-# ---   *   ---   *   ---
-# iterate resolutions
-
-); {
-
-  my $fin="FUCK";
-
-  # string paste so the calls look cleaner
-  my $odir="$fonts_fold"."/$fin";
-  my $src_bmp="$odir"."/$fin".'8_src.bmp';
-  my $src_table="$odir"."/$fin"."_table";
-
-
-
-# ---   *   ---   *   ---
-# generate base resources
-
-  # ensure the out directory exists
-  if(!(`dir "$odir"  2> /dev/null`)) {
-    mkdir $odir;
-
-  };`rm "$odir"/*`;
-
-  # copy files to dir and decompress      
-  system 'cp', ("$base_font","$odir"."/$fin"."_base.gz");
-  system 'gunzip',("$odir"."/$fin"."_base.gz");
-
-  # extract psf data
-  system './rw-psf/readpsf',("$odir"."/$fin".'_base', 'bmp');
-  system './stunift',("$odir"."/$fin"."_base",$src_table);
-
-  # replace extracted glyphs with my own
-  `./bmp.pl "$odir""/$fin"_base.8x8.bmp $src_bmp`;
-
-# ---   *   ---   *   ---
-# generate variations on base
-
-  while(@res) {
-
-    # get next value pair
-    my $pxsz=shift @res;
-    my $pxpc=shift @res;
-
-    # more string paste
-    my $dst_bmp="$odir"."/$fin"."$pxsz".'.bmp';
-    my $dst_psf="$odir"."/$fin"."$pxsz".'.psf';
-    my $dst_psfu="$odir"."/$fin"."$pxsz".'.psfu';
-
-    $pxpc=$pxsz*16;
-    $pxpc="$pxpc".'x'."$pxpc";
-
-    print "\nGenerating $pxsz"."x$pxsz"."($pxpc)"."...";
-
-    # resize and write font
-    system 'magick',('convert','-interpolate','Integer','-filter','point','-compress','None','-depth','24','-resize',$pxpc,'BMP3:'.$src_bmp,'BMP3:'.$dst_bmp);    
-    system './rw-psf/writepsf',('-bw'.$pxsz,'-bh'.$pxsz,$dst_bmp,$dst_psf);
-
-    # add unicode table
-    system 'psfaddtable',($dst_psf,$src_table,$dst_psfu);
-        
-  };
-
-};print "\nDone.\n";
 
 # ---   *   ---   *   ---
 1; # ret;

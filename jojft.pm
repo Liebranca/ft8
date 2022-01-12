@@ -19,7 +19,7 @@
   use strict;
   use warnings;
 
-package JOJFT;
+package jojft;
 
 # constants
   use constant {
@@ -606,6 +606,59 @@ sub btoj {
   };close JOJF;
   system 'gzip',($fout);
   
+};
+
+# ---   *   ---   *   ---
+
+# args psf source,outpath
+# the stupid way of using unprintable chars
+sub stunift {
+  my $infont=shift;$infont=glob $infont;
+  my $intable=shift;$intable=glob $intable;
+
+  # copy the font, then unzip
+  `cp $infont ~/tmp_stunift.gz`;
+  $infont=glob('~/tmp_stunift');
+
+  `gunzip $infont.gz`;
+
+  # generate table and open for read
+  system 'psfgettable',($infont,$intable);
+  open FH,'<',$intable or die $!;
+
+  # readlines
+  my @lines=();while(my $line=<FH>) {
+    if(!$line) {next;};
+    if((index $line,'#') eq 0) {
+      push @lines,$line;next;
+
+    };
+
+    # capture keycode
+    $line=~ s/0x([\w|\d]+)\s+//;
+    my $kc=hex $1;
+
+    # ensure keycode corresponds to char
+    push @lines,sprintf (
+      "0x%02X U+%04x U+%04x\n",
+      $kc,$kc,256+$kc
+
+    );
+    
+
+  };close FH;
+  
+  # now dump buffer
+  open FH,'>',$intable or die $!;
+
+  while(@lines) {
+    print FH shift @lines;
+
+  };close FH;
+
+  # get rid of the temp file
+  `rm ~/tmp_stunift`;
+
 };
 
 # ---   *   ---   *   ---
