@@ -31,7 +31,7 @@ sub help {
 
   my @header=(
     "ft8 <action> <fontname>",
-    
+
     "ft8 handles 8x8 bitmap fonts in joj format; it can pack an existing".
     " bmp into this one-bit per pixel encoding as well as generate".
     " multiple resized versions of the original font".
@@ -42,7 +42,7 @@ sub help {
     " can be used to generate larger fonts. These sources must respect the".
     " standard 16 glyphs per row, for a total of 256 glyphs"
 
-  );my @OPTS=(@header,@{ $CACHE{-OPTS} });  
+  );my @OPTS=(@header,@{ $CACHE{-OPTS} });
   print avt::ex 'help',\@OPTS,' ';exit;
 
 # print version info
@@ -50,7 +50,7 @@ sub help {
   print avt::version(
     'ft8',VERSION,
     'IBN-3DILA'
-    
+
   );exit;
 };
 
@@ -119,7 +119,42 @@ sub generate {
     # cleanup
     `rm $dst_bmp`;
   };`rm $src_bmp`;
-  
+
+};
+
+# ---   *   ---   *   ---
+
+sub masspcf {
+
+  my @res=split ',',shift @ARGV;
+
+  my $name=shift @ARGV;
+  my $idir=shift @ARGV;
+  my $odir=shift @ARGV;
+
+  if(!(-e $odir)) {`mkdir -p $odir`;};
+
+# ---   *   ---   *   ---
+
+  while(@res) {
+    my $sz=shift @res;
+    my $call="psf2bdf --256 --fontname=$name$sz ".
+      "$idir/$name$sz.psfu $odir/$name$sz.bdf";
+
+    `$call`;
+
+    $call="bdftopcf -o $odir/$name$sz.pcf ".
+      "$odir/$name$sz.bdf";
+
+    `$call`;`rm $odir/$name$sz.bdf`;
+
+  };chdir $odir;
+  `mkfontscale`;
+  `mkfontdir`;
+
+  `xset +fp $odir`;
+  `xset fp rehash`;
+
 };
 
 # ---   *   ---   *   ---
@@ -129,10 +164,14 @@ my @OPTS=(
   '-h,--help'         ,'Display this message',
   '-v,--version'      ,'Print version info and exit',
   '-g,--generate'     ,'Creates font and resized versions',
+  '-x,--xformat',     ,'Makes pcf versions of existing font',
+
   '-up,--unpack'      ,'Unpacks provided joj font into a bmp image',
 
 );my %OPTS;{
-  my @op_calls=(\&help,\&version,\&generate,undef);
+  my @op_calls=(\&help,\&version,\&generate,
+    \&masspcf,undef);
+
   %OPTS=%{ cash::mcalltab(\@OPTS,\@op_calls) };
 
   $CACHE{-OPTS}=\@OPTS;
@@ -144,7 +183,7 @@ while(@ARGV && grep m/${ ARGV[0] }/,keys %OPTS) {
   my $opt=shift;
   $OPTS{$opt}->();
 
-};exit;
+};
 
 # ---   *   ---   *   ---
 1; # ret;
