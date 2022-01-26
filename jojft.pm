@@ -23,7 +23,7 @@ package jojft;
 
 # constants
   use constant {
-    
+
     GL_X    =>   8,
     GL_Y    =>   8,
     GL_ROWS =>  16,
@@ -78,14 +78,14 @@ sub open_jojft {
   my $fpath=glob(shift);
   my @fon=();
 
-  # unzip for reading  
+  # unzip for reading
   system 'gunzip',($fpath);
   open JOJF,$fpath;
 
   # idex-es
   my $x=0;
   my $y=0;
-  
+
   # iter values
   my $row='';
   my $i=0;while(read JOJF,$row,8) {
@@ -94,14 +94,14 @@ sub open_jojft {
     ( $fon[$x][$y][0],
       $fon[$x][$y][1] )=unpack 'L2',$row;
 
-    # advance/go to next row      
+    # advance/go to next row
     $x++;if($x==GL_GPR) {
       $y++;$x^=$x;
 
     };
 
   };
-  
+
   # close and zip
   close JOJF;
   system 'gzip',($fpath);
@@ -116,7 +116,7 @@ sub open_jojft {
 sub rbw_row {
   my $b=shift;
   my $off=24-shift;
-  
+
   my $s="";
   my $x=7;do {
     my $c=( $b & (1<<((7-$x)+$off)) ) ? '$' : ' ';
@@ -132,7 +132,7 @@ sub rbw {
   my $x=shift;
   my $y=shift;
 
-  my $line="";  
+  my $line="";
 
   for(my $r=0;$r<8;$r++) {
     my $i=32;do {
@@ -142,7 +142,7 @@ sub rbw {
       $line=$line.( rbw_row $b,24-(8*($r&3)) );
 
     } while($i-=2);$line=$line."\n"
-    
+
   };return $line;
 };
 
@@ -152,7 +152,7 @@ sub rbw {
 sub bw_row {
   my $b=shift;
   my $off=shift;
-  
+
   my $s="";
   my $x=0;do {
     my $c=( $b & (1<<($x+$off)) ) ? '$' : ' ';
@@ -178,9 +178,9 @@ sub bw {
       $line=$line.( bw_row $b,8*($r&3) );
 
     } while($i-=2);$line=$line."\n"
-    
+
   };return $line;
-  
+
 };
 
 # ---   *   ---   *   ---
@@ -191,7 +191,7 @@ sub abw_row {
   my @ar=();
   my $b=shift;
   my $off=shift;
-  
+
   my $x=7;do {
     push @ar,($b & (1<<((7-$x)+$off)) ) ? 1 : 0;
 
@@ -214,9 +214,9 @@ sub abw {
       $ar=abw_row $ar,$glyph,$b,8*($r&3);
 
     } while($i-=2);
-    
+
   };return $ar;
-  
+
 };
 
 # ---   *   ---   *   ---
@@ -226,18 +226,18 @@ sub pr_ascii {
   # default settings are human-readable
   my $mode=shift;
   my $tr_func=\&rbw;
-  
-  # switch to bmp y-invertion  
+
+  # switch to bmp y-invertion
   if($mode) {
     $tr_func=\&bw;
-    
+
   };
 
   my $pr="";
-  
+
   my $r=0;
   my $x=0;
-  
+
   for(my $y=0;$y<16;$y++) {
 
     $pr=$pr.( $tr_func->($x,$y) );$x+=16;
@@ -254,15 +254,15 @@ sub ir_ras {
 
   my $ref=$_[0];
   my @im=();
-  
+
   my $r=0;
   my $x=0;
 
-  # iter through glyphs  
+  # iter through glyphs
   for(my $y=0;$y<GL_ROWS;$y++) {
     for(my $x=0;$x<GL_GPR;$x++) {
 
-      # write glyph to flat array    
+      # write glyph to flat array
       my @ar=read_glyph($ref,$x+($y*GL_GPR),1);
       my $off_y=((GL_ROWS-1)*GL_Y)-($y*GL_Y);
 
@@ -295,7 +295,7 @@ sub ir_ras {
 sub calc_bpr {
   my $sz_x=shift;
   return int(($sz_x*3 + 3)/4)*4;
-  
+
 };
 
 # fpath=path to bmp file
@@ -338,7 +338,7 @@ sub read_bmp {
 
   # get the image data
   my @data=();for(my $y=$sz_y;$y--;) {
-  
+
     my $row;(
       read BMP,$row,$bpr
 
@@ -353,7 +353,7 @@ sub read_bmp {
       shift @bytes;shift @bytes;
 
     };
-    
+
   };close BMP;
   return ($id,$sz_f,$sz_x,$sz_y,$bpr,\@data);
 
@@ -370,7 +370,7 @@ sub write_bmp {
 
   my $dst=shift;
   my @src=@{ $_[0] };shift;
-  
+
   my $bpr=calc_bpr SZ_X;
 
   # open file and dump header
@@ -382,11 +382,11 @@ sub write_bmp {
     # it uses this cringe siggy
     0xcafe,0xbabe,
     54,40,
-    
+
     SZ_X,SZ_Y,
-    
+
     1,24,0,
-    
+
     SZ_Y*$bpr,0,0,0,0,
 
 # ---   *   ---   *   ---
@@ -398,10 +398,10 @@ sub write_bmp {
     my $row='';
     for(my $x=0;$x<SZ_X;++$x) {
       $row .= $src[$x][$y];
-      
+
     };$row .= pack "C$pad",0;
     print BMP $row or die "Bad write\n";
-  };close BMP; 
+  };close BMP;
 
 };
 
@@ -432,7 +432,7 @@ sub checkers {
       $vy|=(($x%(SZ_X-1))!=0);
       $vx=(($x%8)!=0);
 
-      # ^idem      
+      # ^idem
       if(($vx) ^ ($vy)){$dim=!$dim};
       $literal_edge_case=!(($x==(SZ_X-1)) && (!$vy));
 
@@ -444,7 +444,7 @@ sub checkers {
       ;$im[$x][$y]=sprintf "%s",$v.$v.$v;
 
     };
-    
+
   };return \@im;
 };
 
@@ -502,7 +502,7 @@ sub make_glyph {
   };
 
   return @glyph;
-  
+
 };
 
 # ---   *   ---   *   ---
@@ -511,13 +511,13 @@ sub ar_row {
 
   my $v=shift;
   my $fun=\&abw_row;
-  
+
   return (
     $fun->($v,  0),
     $fun->($v,  8),
     $fun->($v, 16),
     $fun->($v, 24)
-    
+
   );
 
 };
@@ -526,7 +526,7 @@ sub pr_row {
 
   my $v=shift;
   my $fun=($_[0]) ? \&rbw_row : \&bw_row;
-  
+
   return
     ( $fun->($v,  0) )."\n".
     ( $fun->($v,  8) )."\n".
@@ -595,17 +595,17 @@ sub btoj {
   # open outfile
   open JOJF,'>',$fout;
 
-  # convert data to joj format  
+  # convert data to joj format
   for(my $y=0;$y<GL_ROWS;$y++) {
     for(my $x=0;$x<GL_GPR;$x++) {
       @glyph=make_glyph(\@im,$x,$y);
       print JOJF pack('L2',@glyph,2);
-      
+
 
     };
   };close JOJF;
   system 'gzip',($fout);
-  
+
 };
 
 # ---   *   ---   *   ---
@@ -644,10 +644,10 @@ sub stunift {
       $kc,$kc,256+$kc
 
     );
-    
+
 
   };close FH;
-  
+
   # now dump buffer
   open FH,'>',$intable or die $!;
 

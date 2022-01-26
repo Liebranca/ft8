@@ -157,6 +157,17 @@ sub masspcf {
 
 };
 
+sub upk {
+
+  my $src=shift @ARGV;
+
+  # get bmp from joj
+  my $bmp=$src.'.bmp';
+
+  jojft::jtob($src,$bmp);
+
+};
+
 # ---   *   ---   *   ---
 
 # options
@@ -170,7 +181,7 @@ my @OPTS=(
 
 );my %OPTS;{
   my @op_calls=(\&help,\&version,\&generate,
-    \&masspcf,undef);
+    \&masspcf,\&upk);
 
   %OPTS=%{ cash::mcalltab(\@OPTS,\@op_calls) };
 
