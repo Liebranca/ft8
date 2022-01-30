@@ -171,30 +171,36 @@ sub upk {
 # ---   *   ---   *   ---
 
 # options
-my @OPTS=(
-  '-h,--help'         ,'Display this message',
-  '-v,--version'      ,'Print version info and exit',
-  '-g,--generate'     ,'Creates font and resized versions',
-  '-x,--xformat',     ,'Makes pcf versions of existing font',
+my @OPTS=@{
 
-  '-up,--unpack'      ,'Unpacks provided joj font into a bmp image',
+  cash::moptab(
 
-);my %OPTS;{
-  my @op_calls=(\&help,\&version,\&generate,
-    \&masspcf,\&upk);
+    '-h,--help',
+    'Display this message',
+    \&help,
 
-  %OPTS=%{ cash::mcalltab(\@OPTS,\@op_calls) };
 
-  $CACHE{-OPTS}=\@OPTS;
+    '-v,--version',
+    'Print version info and exit',
+    \&version,
 
-};if(!@ARGV) {help;};
 
-# iter passed args
-while(@ARGV && grep m/${ ARGV[0] }/,keys %OPTS) {
-  my $opt=shift;
-  $OPTS{$opt}->();
+    '-g,--generate',
+    'Creates font and resized versions',
+    \&generate,
 
-};
+    '-x,--xformat',
+    'Makes pcf versions of existing font',
+    \&masspcf,
+
+    '-up,--unpack',
+    'Unpacks provided joj font into a bmp image',
+    \&upk
+
+  )
+
+};$CACHE{-OPTS}=\@OPTS;
+cash::runtab(\@ARGV);
 
 # ---   *   ---   *   ---
 1; # ret;
