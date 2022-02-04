@@ -30,7 +30,7 @@
 sub help {
 
   my @header=(
-    "ft8 <action> <fontname>",
+    "ft8 <action> <fontname> <out>",
 
     "ft8 handles 8x8 bitmap fonts in joj format; it can pack an existing".
     " bmp into this one-bit per pixel encoding as well as generate".
@@ -42,8 +42,10 @@ sub help {
     " can be used to generate larger fonts. These sources must respect the".
     " standard 16 glyphs per row, for a total of 256 glyphs"
 
-  );my @OPTS=(@header,@{ $CACHE{-OPTS} });
-  print avt::ex 'help',\@OPTS,' ';exit;
+  );my @OPTS=@{ $CACHE{-OPTS} };
+
+  print avt::ex 'help',[@header,@OPTS],' ';
+  exit;
 
 # print version info
 };sub version {
@@ -157,7 +159,7 @@ sub masspcf {
 
 };
 
-sub upk {
+sub upk_b {
 
   my $src=shift @ARGV;
 
@@ -165,6 +167,19 @@ sub upk {
   my $bmp=$src.'.bmp';
 
   jojft::jtob($src,$bmp);
+
+};
+
+sub upk_gl {
+
+  my $src=shift @ARGV;
+  my $outdir=shift @ARGV;
+
+  # get bmp from joj
+  my $gl=$src.'.glsl';
+
+  jojft::jtogl($src,$gl);
+  if($outdir) {`mv $gl $outdir/`;};
 
 };
 
@@ -185,7 +200,7 @@ my @OPTS=@{
     \&version,
 
 
-    '-g,--generate',
+    '-g,--generate <size0,sizeN>',
     'Creates font and resized versions',
     \&generate,
 
@@ -193,9 +208,13 @@ my @OPTS=@{
     'Makes pcf versions of existing font',
     \&masspcf,
 
-    '-up,--unpack',
+    '-ub,--unpack-bmp',
     'Unpacks provided joj font into a bmp image',
-    \&upk
+    \&upk_b,
+
+    '-ugl,--unpack-gl',
+    'Unpacks provided joj font into a glsl file',
+    \&upk_gl
 
   )
 

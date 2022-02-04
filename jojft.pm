@@ -16,10 +16,11 @@
 # ---   *   ---   *   ---
 
 # deps
+package jojft;
   use strict;
   use warnings;
 
-package jojft;
+  use Cwd qw(abs_path);
 
 # constants
   use constant {
@@ -463,6 +464,54 @@ sub jtob {
   # get name of dst and write
   my $fout=shift;
   write_bmp $fout,\@im;
+
+};
+
+# ---   *   ---   *   ---
+
+# src=joj input
+# fout=name of file to write to
+
+# joj font to glsl uint array converter
+sub jtogl {
+
+  my $src=shift;
+  my $name;{
+    my @tmp=split '/',$src;
+    $name=$tmp[$#tmp];
+
+  };
+
+  my @font=@{ open_jojft($src) };
+  my $fout=abs_path(shift);
+
+  my @out=();
+  for(my $y=0;$y<GL_ROWS;$y+=2) {
+    for(my $x=0;$x<GL_GPR;$x+=2) {
+
+      push(@out,
+        sprintf("  0x%08X",$font[$x][$y][0]).','.
+        sprintf("0x%08X",$font[$x][$y][1]).','.
+
+        sprintf("0x%08X",$font[$x+1][$y+1][0]).','.
+        sprintf("0x%08X",$font[$x+1][$y+1][1])
+
+      );
+
+    };
+  };
+
+  open OUT,'>',$fout or die $!;
+
+  print OUT ''.
+    "const uint ".( uc $name ).
+    '['.( GL_ROWS*GL_GPR )."]={\n\n".
+
+    ( join ",\n",@out )."\n".
+
+    "\n};\n"
+
+  ;close OUT;
 
 };
 
