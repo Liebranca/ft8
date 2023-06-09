@@ -68,11 +68,7 @@ sub generate {
   my $odir=shift @ARGV;
 
   # get basename from path
-  my $name;{
-    my @tmp=split '/',$src;
-    $name=$tmp[$#tmp];
-
-  };
+  my $name=avt::basename($src);
 
   my $src_table="$odir/$name".'_table';
   if(!(-e $odir)) {`mkdir -p $odir`;};

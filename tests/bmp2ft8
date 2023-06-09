@@ -1,0 +1,47 @@
+#!/usr/bin/perl
+# ---   *   ---   *   ---
+# BMP TO FT8
+# A xactional wrapper
+#
+# LIBRE SOFTWARE
+# Licensed under GNU GPL3
+# be a bro and inherit
+#
+# CONTRIBUTORS
+# lyeb,
+
+# ---   *   ---   *   ---
+# deps
+
+package main;
+
+  use v5.36.0;
+  use strict;
+  use warnings;
+
+  use English qw(-no_match_vars);
+
+  use lib $ENV{'ARPATH'}.'/lib/sys/';
+  use Style;
+
+  use lib $ENV{'ARPATH'}.'/ft8/';
+  use BMP;
+
+# ---   *   ---   *   ---
+# info
+
+  our $VERSION = v2.00.1;
+  our $AUTHOR  = 'IBN-3DILA';
+
+# ---   *   ---   *   ---
+
+my $bmp=BMP->forc('./lycon.bmp');
+
+map {printf "%08X\n",$ARG} $bmp->pack_8x8(0,0);
+
+$bmp->to_ft8('not_lycon');
+my $ft8=FT8->forc('not_lycon.gz');
+
+$ft8->to_singl('../sin/font/src/Chars.sg');
+
+# ---   *   ---   *   ---

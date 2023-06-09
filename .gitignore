@@ -3,3 +3,7 @@
 
 # gen
 avto
+.avto-cache
+
+# panic folder
+backup/
